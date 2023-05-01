@@ -31,8 +31,67 @@ em.detach(member);  // 영속성 컨텍스트에서 분리
 
 - 삭제(removed) : 삭제된 상태
 ```java
-em.remove(member); // 객체를 
+em.remove(member); // 객체를 삭제
 ```
+
+## 영속성 컨텍스트의 이점
+- 1차 캐시
+- 동일성(identity) 보장
+- 트랜잭션을 지원하는 쓰기 지연(transactional write-behind)
+- 변경 감지(Dirty Checking)
+- 지연 로딩(Lazy Loading)
+
+### 1차 캐시
+```java
+Member member = new Member();
+member.setId(101L);
+member.setName("HelloJPA");
+
+em.persist(member);
+Member findMember1 = em.find(Member.class, 101L);
+```
+DB가 아닌 persist(member)를 한후 find(member,101L)을 조회를 해도 select 쿼리가 날라가지 않고 1차캐시에서 find 한다.
+```java
+Member findMember1 = em.find(Member.class, 101L);
+Member findMember2 = em.find(Member.class, 101L);
+```
+같은것을 두번 조회하면 select 문을 쓰지않고, 1차캐시에서 조회해서 select문이 안찍힌다.
+
+### 동일성 보장
+```java
+Member findMember1 = em.find(Member.class, 101L);
+Member findMember2 = em.find(Member.class, 101L);
+System.out.println("result = " + (findMember1 == findMember2)); // true 
+```
+
+### 쓰기 지연
+```java
+EntityManager em = emf.createEntityManager();
+EntityTransaction transaction = em.getTransaction();
+transaction.begin(); // [트랜잭션] 시작
+
+em.persist(memberA);
+em.persist(memberB);
+//여기까지 INSERT SQL을 데이터베이스에 보내지 않는다.
+
+transaction.commit(); // [트랜잭션] 커밋
+```
+JDBC 배치처럼 모아뒀다가 commit 되는 순간 한번에 insert SQL을 보낸다.
+persistence.xml 에 <property name="hibernate.jdbc.batch_size" value="10"/> 에 batch size 수정 가능.
+
+### 엔티티 수정(변경 감지)
+```java
+Member member = em.find(Member.class, 150L);
+member.setName("ZZZZZ");
+```
+em.persist나 update 같은 코드를 따로 적어 주지 않아도 update가 된다.
+
+![화면 캡처 2023-05-02 001546](https://user-images.githubusercontent.com/48784785/235475248-394d0797-f830-4773-b77e-f55a4ea61c63.png)
+
+엔티티와 스냅샷을 비교하여 변경이 되었으면 알아서 update를 해준다.
+
+
+
 
 
 
