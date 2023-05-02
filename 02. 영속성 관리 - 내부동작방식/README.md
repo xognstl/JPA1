@@ -52,6 +52,9 @@ em.persist(member);
 Member findMember1 = em.find(Member.class, 101L);
 ```
 DB가 아닌 persist(member)를 한후 find(member,101L)을 조회를 해도 select 쿼리가 날라가지 않고 1차캐시에서 find 한다.
+
+단, 동일한 트랜잭션 안에서
+
 ```java
 Member findMember1 = em.find(Member.class, 101L);
 Member findMember2 = em.find(Member.class, 101L);
