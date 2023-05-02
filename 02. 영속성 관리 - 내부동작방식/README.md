@@ -98,6 +98,45 @@ ___
 
 ## 플러시
 
+플러시란 영속성 컨텍스트의 변경내용을 DB에 반영하는 것.
+DB 트랜잭션이 commit 되면 자동으로 플러시가 발생
+
+변경 감지 -> 수정된 엔티티 쓰기 지연 SQL 저장소에 등록 -> 쿼리를 DB에 전송
+
+### flush 방법
+- em.flush() - 직접호출(커밋 전 쿼리를 볼 수 없다. 미리 DB에 반영하거나 쿼리를 미              리보고 싶을떄 사용.)
+- 트랜잭션 커밋 - 플러시 자동 호출,
+- JPQL 쿼리 실행 - 자동 호출
+
+### JPQL 쿼리 실행시 플러시가 자동으로 호출되는 이유
+
+```java
+em.persist(memberA);
+em.persist(memberB);
+em.persist(memberC);
+// 이때 까지 실제 DB에는 쿼리가 날라가지 않는다.
+//중간에 JPQL 실행
+query = em.createQuery("select m from Member m", Member.class); 
+List<Member> members= query.getResultList();
+```
+
+기본모드가 JPQL 쿼리가 싱행시 플러시가 자동으로 호출된다. 그래서 members 에서는 A,B,C 가 조회가 된다.
+
+### 플러시 옵션
+
+- FlushModeType.AUTO : 커밋이나 쿼리를 실행할 때 플러시(기본값)
+
+- FlushModeType.COMMIT : 커밋할 때만 플러시
+
+
+### 플러시는
+- 영속성 컨텍스트를 비우지 않음
+
+- 영속성 컨텍스트의 변경내용을 데이터베이스에 동기화
+
+- 트랜잭션이라는 작업 단위가 중요 -> 커밋 직전에만 동기화하면 됨
+
+
 ___
 ## 준영속  
 
