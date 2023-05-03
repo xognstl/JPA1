@@ -8,6 +8,7 @@
 - 연관관계 매핑 : @ManyToOne, @JoinColumn
 
 
+___
 ## 객체와 테이블 매핑
 
 ### @Entity
@@ -49,4 +50,136 @@ ___
 
 ___
 ## 필드와 컬럼 매핑
+
+### 매핑 어노테이션 정리
+
+- @Column (컬럼 매핑)
+  - name : 필드와 매핑할 테이블의 컬럼 이름 (default : 객체의 필드 이름)
+  - insertable, updatable : 등록, 변경 가능 여부 (default : true)
+  - nullable : null 값 허용 여부 설정, false로 설정시 not null 제약조건이 붙는다.
+  - unique : @Table의 uniqueConstraints와 같지만 한 컬럼에 간단히 유니크 제약조건을 걸 때 사용
+  - columnDefinition : DB 컬럼 정보를 직접 줄 수 있다. ex) varchar(100) default ‘EMPTY'
+  - length : 문자 길이 제약 조건 (default : 255)
+  - precision, scale : BigDecimal 타입에서의 소수점 관련  
+
+- @Temporal (날짜 타입 매핑)
+  - TemporalType.DATE : 2023-05-03
+  - TemporalType.TIME : 20:16:00
+  - TemporalType.TIMESTAMP : 2023-05-03 20:16:00
+
+(java.util.Date, java.util.Calendar을 매핑할 때 사용
+
+LocalDate, LocalDateTime을 사용할 때는 생략 가능
+
+```java
+private LocalDate testLocalDate;
+private LocalDateTime testLocalDateTime;
+```
+
+- @Enumerated (enum 타입 매핑)
+
+```java
+public enum RoleType {
+    USER, ADMIN
+}
+
+@Enumerated(EnumType.STRING) 
+private RoleType roleType;
+```
+
+```java
+Member member = new Member();
+member.setId(1L);
+member.setUsername("A");
+member.setRoleType(RoleType.USER);
+// EnumType.ORDINAL: enum 순서를 데이터베이스에 저장, 위의 코드에서 데이터에 0이 저장된다.
+// EnumType.STRING: enum 이름을 데이터베이스에 저장, 위의 코드에서 데이터에 USER가 저장된다.
+em.persist(member);
+```
+
+- Lob (BLOB, CLOB 매핑)
+
+- Transient ( 필드를 컬럼에 매핑 X)
+
+
+<br>
+
+___
+## 기본 키 매핑
+
+```java
+@Id @GeneratedValue(strategy = GenerationType.AUTO)
+private Long id;
+```
+
+### 기본 키 매핑 방법
+- 직접 할당 : @Id만 사용
+- 자동 생성 : @GeneratedValue
+
+#### AUTO
+각 DB 문법에 따라 자동 지정 된다. (기본값)
+
+#### IDENTITY
+- 기본 키 생성을 DB에 위임
+- 주로 MySQL, PostgreSQL, SQL Server, DB2에서 사용 (ex : MySQL의 AUTO_ INCREMENT)
+
+```java
+member.setId(1L); // Id를 넣어줄 필요가 없고 null 로 하면 알아서 AUTO_INCREMENT가 되어 1부터 데이터가 들어간다.
+```
+
+id에 값을 넣지 않은 상태에서 DB에 insert 를 해야한다. DB에서 null로 insert 쿼리가 날라오면 그때 값을 세팅해준다.   
+id값을 알 수 있는 시점은 DB에 값이 들어간 후다.   
+identity 에서만 em.persist(member); 를 호출 하자마자 DB에 insert 쿼리를 날린다.(원래는 commit)   
+insert 후 jpa 내부적으로 영속성 컨텍스트의 pk값으로 쓰게 된다.   
+Batch 처럼 insert를 모아서 쿼리를 날리는 것을 할 수 없는 것이 단점이다.   
+
+
+#### SEQUENCE
+- 데이터베이스 시퀀스는 유일한 값을 순서대로 생성하는 특별한 데이터베이스 오브젝트(예: 오라클 시퀀스)
+- 오라클, PostgreSQL, DB2, H2에서 사용
+- SEQUENCE -- @SequenceGenerator
+  - name : 식별자 생성기 이름(필수 값)
+  - sequenceName : 데이터베이스에 등록되어 있는 시퀀스 이름 (default : hibernate_sequence)
+  - initialValue : DDL 생성 시에만 사용됨, 시퀀스 DDL을 생성할 때 처음 1 시작하는 수를 지정한다. 
+  - allocationSize : 시퀀스 한 번 호출에 증가하는 수(성능 최적화에 사용됨) 데이터베이스 시퀀스 값이 하나씩 증가하도록 설정되어 있으면 이 값을 반드시 1로 설정해야 한다.
+  - catalog, schema : 데이터베이스 catalog, schema 이름
+
+```java
+@Entity
+@SequenceGenerator(
+ name = “MEMBER_SEQ_GENERATOR",
+ sequenceName = “MEMBER_SEQ", //매핑할 데이터베이스 시퀀스 이름
+ initialValue = 1, allocationSize = 1)
+public class Member {
+ @Id
+ @GeneratedValue(strategy = GenerationType.SEQUENCE,
+ generator = "MEMBER_SEQ_GENERATOR")
+ private Long id;
+```
+
+persist를 하려면 영속성 컨텍스트에 일단 넣어야하고, 그러면 PK가 필요하다.   
+PK값을 알려면 sequence 값이 필요하고 DB에서 sequence를 가져와야한다.   
+JPA 에서는 call next value for SEQ_NAME 을 통해 식별자 값을 가져온다.   
+initialValue = 1, allocationSize = 50 으로 설정을 해놓으면 (create sequence MEMBER_SEQ start with 1 increment by 50)   
+원래는 persist 할때마다 next call을 하는데 성능 저하가 있을 수 있다. allocationSize = 50 이면 메모리에 미리 50개를 할당 받아 놓는다.   
+
+
+#### TABLE
+- 키 생성 전용 테이블을 하나 만들어서 데이터베이스 시퀀스를 흉내내는 전략
+- 장점은 모든 DB에 적용 가능하지만 단점은 성능이 좋지 않다.
+- @TableGenerator
+  - name : 식별자 생성기 이름(필수값)
+  - table 키생성 테이블명 (default : hibernate_sequences)
+  - pkColumnName 시퀀스 컬럼명 (default : sequence_name)
+  - valueColumnName : 시퀀스 값 컬럼명 (default : next_val)
+  - pkColumnValue : 키로 사용할 값 이름 엔티티 이름
+  - initialValue 초기 값, 마지막으로 생성된 값이 기준이다. (default : 0)
+  - allocationSize 시퀀스 한 번 호출에 증가하는 수(성능 최적화에 사용됨) (default : 50)
+  - catalog, schema 데이터베이스 catalog, schema 이름
+  - uniqueConstraints : 유니크 제약 조건을 지정할 수 있다
+
+
+* 식별자는 Long형 + 대체키 + 키 생성전략 사용을 권장
+
+
 
