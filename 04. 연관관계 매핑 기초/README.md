@@ -59,7 +59,7 @@ Team findTeam = em.find(Team.class, findTeamId);
 ### 객체 지향 모델링 (객체 연관관계 사용)
 ![화면 캡처 2023-05-06 002209](https://user-images.githubusercontent.com/48784785/236500015-a26e441b-4b3b-4ece-82fa-8944ae514d21.png)
 
-- 객체의 참조와 테이블의 외래키를 매
+- 객체의 참조와 테이블의 외래키를 매핑
 ```java
 //    @Column(name = "TEAM_ID")
 //    private Long teamId;
