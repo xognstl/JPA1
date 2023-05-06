@@ -95,5 +95,68 @@ Team newTeam = em.find(Team.class, 100L);
 findMember.setTeam(newTeam);
 ```
 
+<br>
+
+___
+## 양방향 연관관계와 연관관계의 주인
+
+### 양방향 매핑
+
+```java
+Team findTeam = findMember.getTeam();
+```
+Member 객체에서 Team 을 조회 할 수 있지만 Team 에서 Member 를 볼 수 없다.
+
+![화면 캡처 2023-05-06 135327](https://user-images.githubusercontent.com/48784785/236600701-d959ec27-7490-4af0-9e14-ba436141ca77.png)
+
+- Team class에 members 추가
+```java
+    @OneToMany(mappedBy = "team")
+    private List<Member> members = new ArrayList<>();
+```
+
+### mappedBy
+객체는 양방향이라기보단 회원-> 팀 , 팀 -> 회원 형태의 단방향 2개 이고, 테이블은 회원 <-> 팀 처럼 양방향이다.   
+객체는 둘 중 하나로 외래 키를 관리 해야하는데 두 관계중 하나를 연관관계의 주인으로 지정한다.   
+연관관계 주인만이 외래 키를 관리(등록, 수정) 할 수 있고, 나머지는 읽기만 가능하다.   
+주인은 mappedBy 속성을 사용 하지않고 주인이 아닐때만 mappedBy 속성으로 주인을 지정한다.   
+
+### 주의점
+
+```java
+            //회원 저장
+            Member member = new Member();
+            member.setName("member1");
+            em.persist(member);
+
+            //팀 저장
+            Team team = new Team();
+            team.setName("TeamA");
+            team.getMembers().add(member);  //역방향(주인이 아닌 방향)만 연관관계 설정
+            em.persist(team);
+```
+위와 같이 하면 member 테이블에 TEAM_ID 가 null 이 된다. 주인이 아닌 TEAM 에서 변경을 하면 반영되지 않는다.   
+```java
+            //팀 저장
+            Team team = new Team();
+            team.setName("TeamA");
+            em.persist(team);
+
+            //회원 저장
+            Member member = new Member();
+            member.setName("member1");
+            member.setTeam(team);
+            em.persist(member);
+```
+위와 같이 주인이 되는 곳에서 변경을 하면 테이블에 반영이 된다.
+
+매 번 getMembers().add(team) 이런 코드를 쓰지말고 연관관계 편 메소드를 만들어준다.
+```java
+public void setTeam(Team team) {
+        this.team = team;
+        team.getMembers().add(this);
+    }
+```
+
 
 
