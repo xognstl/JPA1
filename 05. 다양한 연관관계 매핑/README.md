@@ -146,4 +146,60 @@ ___
   - 장점: 주 테이블과 대상 테이블을 일대일에서 일대다 관계로 변경할 때 테이블 구조 유지
   - 단점: 프록시 기능의 한계로 지연 로딩으로 설정해도 항상 즉시 로딩됨
 
+<br>
+
+___
+## 다대다 [N:N]
+
+- 관계형 데이터베이스는 정규화된 테이블 2개로 다대다 관계를 표현할 수 없음   
+- 연결 테이블을 추가해서 일대다, 다대일 관계로 풀어내야함   
+- 객체는 컬렉션을 사용해서 객체 2개로 다대다 관계 가능(@ManyToMany 사용, @JoinTable을 사용하여 연결 테이블 지정)
+
+- 중간 테이블에는 매핑 정보만 들어오기 때문에 주문시간, 수량 같은 데이터가 들어오지 못한다. 그래서 다대다는 일대다 다대일 관계로 풀어낸다.
+
+![화면 캡처 2023-05-08 215301](https://user-images.githubusercontent.com/48784785/236829227-3b43f24a-5f3b-41fc-8354-e6d208f4ddf1.png)
+
+* 다대다 한계 극복
+- 연결 테이블용 엔티티 추가(연결테이블 대신 엔티티)
+- @ManyToMany -> @OneToMany, @ManyToOne
+![화면 캡처 2023-05-08 221219](https://user-images.githubusercontent.com/48784785/236833270-956bd1c2-0ca3-4e2e-8a71-d0c32d3a5861.png)
+
+```java
+//Member.class
+    @Id @GeneratedValue
+    @Column(name = "MEMBER_ID")
+    private Long id;
+
+    @Column(name = "USERNAME")
+    private String username;
+    
+    @OneToMany(mappedBy = "member")
+    private List<MemberProduct> memberProducts = new ArrayList<>();
+
+//MemberProduct.class(Order)
+    @Id @GeneratedValue
+    private Long id;
+
+    @ManyToOne
+    @JoinColumn(name = "MEMBER_ID")
+    private Member member;
+
+    @ManyToOne
+    @JoinColumn(name = "PRODUCT_ID")
+    private  Product product;
+    
+    private int count;
+    private int price;
+    private LocalDateTime orderDateTime;  // 연결 테이블을 엔티티로 만들어서 매핑정보 이외의 컬럼을 넣을 수 있다.
+        
+//Product.class
+    @Id @GeneratedValue
+    private Long id;
+
+    private String name;
+
+    @OneToMany(mappedBy = "product")
+    private List<MemberProduct> memberProducts = new ArrayList<>();
+```
+
 
