@@ -32,6 +32,7 @@ ___
 
 ### 단일 테이블 전략
 ![화면 캡처 2023-05-10 201352](https://github.com/xognstl/JPA1/assets/48784785/594010b2-d73d-43c0-a2d9-9ed296eaa46a)
+
 @DiscriminatorColumn 어노테이션을 생략해도 자동으로 들어간다.
 
 - 장점
