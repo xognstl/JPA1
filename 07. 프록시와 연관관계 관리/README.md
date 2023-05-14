@@ -120,3 +120,150 @@ System.out.println("isLoad = " + emf.getPersistenceUnitUtil().isLoaded(refMember
 ```java
 Hibernate.initialize(refMember);    //강제 초기화
 ```
+
+<br>
+
+
+___
+## 즉시로딩과 지연로딩
+
+### Member를 조회할 때 Team도 함께 조회해야 할까?
+
+### 지연 로딩
+단순히 member 정보만 사용하는 비지니스 로직에 사용(member.getName);
+
+```java
+@ManyToOne(fetch = FetchType.LAZY)
+@JoinColumn(name = "TEAM_ID")
+private Team team;
+
+Team team = new Team();
+team.setName("teamA");
+em.persist(team);
+
+Member member1 = new Member();
+member1.setUsername("member1");
+member1.setTeam(team);
+em.persist(member1);
+
+em.flush();
+m.clear();
+
+Member m = em.find(Member.class, member1.getId());
+System.out.println("m = " + m.getTeam().getClass());        // team은 프록시에서 조회
+
+System.out.println("===");
+m.getTeam().getName();      // 실제 team을 사용하는 시점에 DB 조회.
+System.out.println("===");
+```
+
+* team의  fetch를 LAZY로 설정하면 Member 만 DB에서 조회하고, member에 참조되있는 team은 프록시로 조회를 한다.
+
+### 즉시로딩
+
+* 즉시로딩으로 조회를 하면 member와 team을 조인해서 한번에 가져온다.
+
+### 프록시와 즉시로딩 주의점
+- 가급적 지연 로딩만 사용(특히 실무에서)
+- 즉시 로딩을 적용하면 예상하지 못한 SQL이 발생
+- 즉시 로딩은 JPQL에서 N+1 문제를 일으킨다.
+- @ManyToOne, @OneToOne은 기본이 즉시 로딩 -> LAZY로 설정
+- @OneToMany, @ManyToMany는 기본이 지연 로딩
+
+```java
+List<Member> members = em.createQuery("select m from Member m", Member.class).getResultList();
+// 쿼리가 2번 날라간다.(member, team)
+// 지연로딩으로 바꾸고 fetch join을 사용하여 쿼리가 2개 나가는 것에 대한 것을 해결.
+```
+
+<br>
+
+___
+## 영속성 전이(CASCADE)와 고아 객체
+
+### 영속성 전이(CASCADE)
+- 특정 엔티티를 영속 상태로 만들 때 연관된 엔티티도 함께 영속 상태로 만들도 싶을 때
+- 예: 부모 엔티티를 저장할 때 자식 엔티티도 함께 저장
+- 영속성 전이는 연관관계를 매핑하는 것과 아무 관련이 없음
+- 엔티티를 영속화할 때 연관된 엔티티도 함께 영속화하는 편리함을 제공할 뿐
+- ALL, PERSIST, REMOVE, MERGE, REFRESH, DETACH
+
+![화면 캡처 2023-05-14 234111](https://github.com/xognstl/shoeCream/assets/48784785/f8577ca7-b3c2-458f-a82b-6c992d978b08)
+
+```java
+// Parent.class
+    @Id
+    @GeneratedValue
+    private Long id;
+    private String name;
+
+    @OneToMany(mappedBy = "parent", cascade = CascadeType.ALL)
+    private List<Child> childList = new ArrayList<>();
+
+    public void addChild(Child child) {
+        childList.add(child);
+        child.setParent(this);
+    }
+
+//Child.class
+    @Id
+    @GeneratedValue
+    private Long id;
+    private String name;
+
+    @ManyToOne
+    @JoinColumn(name = "parent_id")
+    private Parent parent;
+```   
+```java
+Child child1 = new Child();
+Child child2 = new Child();
+Parent parent = new Parent();
+
+parent.addChild(child1);
+parent.addChild(child2);
+
+em.persist(parent);
+//            em.persist(child1);
+//            em.persist(child2); // cascade 옵션을 주면 이부분을 써주지 않아도 persist 가 됨.
+```
+
+### 고아 객체
+
+- 고아 객체 제거: 부모 엔티티와 연관관계가 끊어진 자식 엔티티를 자동으로 삭제
+- orphanRemoval = true
+
+```java
+//Member.class
+@OneToMany(mappedBy = "parent", cascade = CascadeType.ALL, orphanRemoval = true)
+private List<Child> childList = new ArrayList<>();
+
+Child child1 = new Child();
+Child child2 = new Child();
+
+Parent parent = new Parent();
+parent.addChild(child1);
+parent.addChild(child2);
+
+em.persist(parent);
+
+em.flush();
+em.clear();
+
+Parent findParent = em.find(Parent.class, parent.getId());
+findParent.getChildList().remove(0);
+```
+
+- 참조가 제거된 엔티티는 다른 곳에서 참조하지 않는 고아 객체로
+보고 삭제하는 기능
+- 참조하는 곳이 하나일 때 사용해야함!
+- 특정 엔티티가 개인 소유할 때 사용
+- @OneToOne, @OneToMany만 가능
+- 참고: 개념적으로 부모를 제거하면 자식은 고아가 된다. 따라서 고아 객체 제거 기능을 활성화 하면, 부모를 제거할 때 자식도 함께 제거된다. 이것은 CascadeType.REMOVE처럼 동작한다.
+
+
+#### 영속성 전이 + 고아 객체, 생명주기
+- CascadeType.ALL + orphanRemoval=true
+- 스스로 생명주기를 관리하는 엔티티는 em.persist()로 영속화, em.remove()로 제거
+- 두 옵션을 모두 활성화 하면 부모 엔티티를 통해서 자식의 생명주기를 관리할 수 있음
+- 도메인 주도 설계(DDD)의 Aggregate Root개념을 구현할 때 유용
