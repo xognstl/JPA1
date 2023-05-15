@@ -183,7 +183,7 @@ ___
         if (o == null || getClass() != o.getClass()) return false;
         Address address = (Address) o;
         return Objects.equals(city, address.city) && Objects.equals(street, address.street) && Objects.equals(zipcode, address.zipcode);
-    }
+    } // getter,setter, constructor 만드는 곳의 equals and hascode 이용해서 모든필드로 생성
 ```
 
 <br>
