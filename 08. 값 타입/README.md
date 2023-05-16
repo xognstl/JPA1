@@ -190,3 +190,87 @@ ___
 
 ___
 ## 값 타입 컬렉션
+
+
+![화면 캡처 2023-05-16 230021](https://github.com/xognstl/JPA1/assets/48784785/ce726c00-3a07-4402-9d0e-148d91cbdc99)
+
+```java
+//Member.class 값 타입 컬렉션.
+    @Id
+    @GeneratedValue
+    @Column(name = "MEMBER_ID")
+    private Long id;
+
+    @Column(name = "USERNAME")
+    private String username;
+
+    @Embedded
+    private Address homeAddress;
+
+    @ElementCollection
+    @CollectionTable(name = "FAVORITE_FOOD", joinColumns = @JoinColumn(name = "MEMBER_ID"))
+    @Column(name = "FOOD_NAME")
+    private Set<String> favoriteFoods = new HashSet<>();
+
+    @ElementCollection
+    @CollectionTable(name = "ADDRESS", joinColumns = @JoinColumn(name = "MEMBER_ID"))
+    private List<Address> addressHistory = new ArrayList<>();
+```
+
+* 값 타입 컬렉션은 값 타입을 하나 이상 저장할 때 사용한다. @ElementCollection, @CollectionTable 사용   
+데이터베이스는 컬렉션을 같은 테이블에 저장할 수 없다. 컬렉션을 저장하기 위한 별도의 테이블이 필요함   
+
+### 값 타입 컬렉션의 제약사항
+- 값 타입은 엔티티와 다르게 식별자 개념이 없다.
+- 값은 변경하면 추적이 어렵다.
+- 값 타입 컬렉션에 변경 사항이 발생하면, 주인 엔티티와 연관된 모든 데이터를 삭제하고, 값 타입 컬렉션에 있는 현재 값을 모두 다시 저장한다.
+  (2개의 데이터가 있고, 한개를 remove, 한개를 add 하면 모든 데이터를 지우고 나머지 1개와 add한 1개를 insert 2번씩 한다)
+- 값 타입 컬렉션을 매핑하는 테이블은 모든 컬럼을 묶어서 기본키를 구성해야 함: null 입력X, 중복 저장X
+
+### 값 타입 컬렉션 대안
+- 값 타입 컬렉션 대신에 일대다 관계를 고려
+
+```java
+//Member.class
+    @Id
+    @GeneratedValue
+    @Column(name = "MEMBER_ID")
+    private Long id;
+
+    @Column(name = "USERNAME")
+    private String username;
+
+    @Embedded
+    private Address homeAddress;
+
+    @ElementCollection
+    @CollectionTable(name = "FAVORITE_FOOD", joinColumns = @JoinColumn(name = "MEMBER_ID"))
+    @Column(name = "FOOD_NAME")
+    private Set<String> favoriteFoods = new HashSet<>();
+
+    @OneToMany(cascade = CascadeType.ALL, orphanRemoval = true)
+    @JoinColumn(name = "MEMBER_ID")
+    private List<AddressEntity> addressHistory = new ArrayList<>();
+    
+//AddressEntity.class
+   @Id @GeneratedValue
+    private Long id;
+
+    private Address address;
+
+    public AddressEntity(String city, String street, String zipcode) {
+        this.address = new Address(city, street, zipcode);
+    }
+
+    public AddressEntity(Address address) {
+        this.address = address;
+    }
+
+    public AddressEntity() {
+        
+    }
+```
+
+
+
+
